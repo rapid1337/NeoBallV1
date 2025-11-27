@@ -1,14 +1,18 @@
 #include "Paddle.h"
 
-Paddle::Paddle(float x, float y) {
-    rect = {x, y, 100.0f, 20.0f};
-    targetWidth = 100.0f;
-    speed = 500.0f;
+Paddle::Paddle(float x, float y, float s) : scale(s) {
+    // Basiswerte (800x600) * Scale
+    float w = 100.0f * scale;
+    float h = 20.0f * scale;
+    rect = { x, y, w, h };
+
+    targetWidth = w;
+    speed = 500.0f * scale; // Auch Geschwindigkeit skalieren!
 }
 
 void Paddle::update(float dt, int windowWidth) {
     const bool* keys = SDL_GetKeyboardState(NULL);
-    
+
     if (keys[SDL_SCANCODE_LEFT]) {
         rect.x -= speed * dt;
     }
@@ -26,6 +30,7 @@ void Paddle::update(float dt, int windowWidth) {
     }
 }
 
-void Paddle::setWidth(float w) {
-    targetWidth = w;
+void Paddle::setWidth(float wBase) {
+    // Wenn wir z.B. 150 übergeben, wird es auf 150 * scale gesetzt
+    targetWidth = wBase * scale;
 }

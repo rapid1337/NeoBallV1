@@ -1,13 +1,15 @@
 #include "Brick.h"
 
-Brick::Brick(float x, float y, int hp, int t, Color c) 
+Brick::Brick(float x, float y, int hp, int t, Color c, float scale)
     : health(hp), type(t), color(c), active(true), zOffset(0.0f) {
-    rect = {x, y, 60.0f, 30.0f};
+
+    // Basisgröße 60x30 skalieren
+    rect = { x, y, 60.0f * scale, 30.0f * scale };
 }
 
 void Brick::hit() {
     health--;
-    zOffset = 5.0f; // Hüpft bei Treffer
+    zOffset = 5.0f;
     if (health <= 0) active = false;
 }
 

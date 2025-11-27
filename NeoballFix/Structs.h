@@ -2,8 +2,6 @@
 
 struct Color {
     float r, g, b, a;
-    
-    // Hilfsfunktion für dunklere Farbe (Schatten)
     Color darken(float factor) const {
         return { r * factor, g * factor, b * factor, a };
     }
@@ -11,7 +9,14 @@ struct Color {
 
 enum PowerUpType { PU_WIDE, PU_FIRE, PU_MULTI };
 
-// Struktur für Punkte-Items (Münzen/Kreise)
+enum GameState {
+    STATE_MENU,
+    STATE_SETTINGS,
+    STATE_PLAYING,
+    STATE_LEVEL_COMPLETE,
+    STATE_GAME_OVER
+};
+
 struct PointItem {
     float x, y;
     float velY;
@@ -19,4 +24,11 @@ struct PointItem {
     int value;
     Color color;
     bool active;
+};
+
+// Hilfsstruktur für Buttons
+struct Button {
+    float x, y, w, h;
+    const char* label;
+    bool hovered;
 };

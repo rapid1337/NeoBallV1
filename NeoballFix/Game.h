@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 #include <vector>
 #include <string>
+#include <fstream>
 #include "Structs.h"
 #include "Paddle.h"
 #include "Ball.h"
@@ -25,35 +26,55 @@ public:
     Game();
     ~Game();
 
-    bool init(const char* title, int width, int height);
+    bool init(const char* title);
     void run();
 
 private:
     void processEvents();
     void update(float deltaTime);
     void render();
-    
-    // Resource Management
+
+    // Management
+    void loadSettings();
+    void saveSettings();
+    void changeResolution(int w, int h);
+    void updateScaleFactor(); // NEU: Berechnet Skalierung neu
+
+    // Rendering States
+    void renderMenu();
+    void renderSettings();
+    void renderLevelComplete();
+    void renderGameOver();
+
+    // UI Helpers
+    bool drawButton(float x, float y, float w, float h, const char* text);
+    void drawText(const char* text, float x, float y, float scale, Color c);
+    void drawChar(char c, float x, float y, float scale, Color color);
+    void drawNumber(int number, float x, float y, float scale);
+
+    // Resources
     void loadTextures();
     SDL_Texture* loadTexture(const char* file);
 
-    // Helpers
+    // Gameplay
     void resetBall();
     void nextLevel();
     void loadLevel(int levelIndex);
     void createBrick(float x, float y, int type);
     void spawnParticles(float x, float y, Color c);
     void trySpawnItem(float x, float y);
-    
-    // Rendering Helpers
-    void drawNumber(int number, float x, float y, float scale);
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     bool isRunning = false;
     Uint64 lastTime = 0;
 
-    // --- Texturen ---
+    int winWidth = 800;
+    int winHeight = 600;
+
+    // NEU: Globaler Skalierungsfaktor
+    float scaleFactor = 1.0f;
+
     SDL_Texture* texBg = nullptr;
     SDL_Texture* texPaddle = nullptr;
     SDL_Texture* texBall = nullptr;
@@ -65,18 +86,21 @@ private:
     SDL_Texture* texItemPoint = nullptr;
 
     Paddle* paddle = nullptr;
-    
+
     std::vector<Ball> balls;
     std::vector<Brick> bricks;
     std::vector<Particle> particles;
     std::vector<PowerUp> powerups;
     std::vector<PointItem> pointItems;
 
-    float shakeTime = 0.0f; 
-
+    float shakeTime = 0.0f;
     int lives;
     bool ballStuckToPaddle;
-    bool isGameOver;
+    GameState gameState;
     int score;
     int currentLevelIndex;
+
+    float mouseX = 0;
+    float mouseY = 0;
+    bool mousePressed = false;
 };

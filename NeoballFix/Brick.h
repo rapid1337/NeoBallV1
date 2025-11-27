@@ -4,22 +4,22 @@
 
 class Brick {
 public:
-    // hp = Lebenspunkte, type = Textur-ID
-    Brick(float x, float y, int hp, int type, Color c);
-    
+    // Scale im Konstruktor
+    Brick(float x, float y, int hp, int type, Color c, float scale);
+
     void hit();
     bool isActive() const { return active; }
     SDL_FRect getRect() const { return rect; }
     Color getColor() const { return color; }
-    int getType() const { return type; } 
-    float getZOffset() const { return zOffset; } 
+    int getType() const { return type; }
+    float getZOffset() const { return zOffset; }
     void updateAnimation(float dt);
 
 private:
     SDL_FRect rect;
     bool active;
     int health;
-    int type; 
+    int type;
     Color color;
     float zOffset;
 };
