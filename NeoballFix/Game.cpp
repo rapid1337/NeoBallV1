@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <iostream>
 
+// Konstruktor
 Game::Game() : lives(3), ballStuckToPaddle(true), gameState(STATE_MENU), score(0), currentLevelIndex(1) {
     loadSettings();
-    updateScaleFactor(); // Skalierung initial berechnen
 }
 
 Game::~Game() {
@@ -25,12 +25,6 @@ Game::~Game() {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-}
-
-void Game::updateScaleFactor() {
-    // Wir nehmen die Breite als Basis für die Skalierung (Verhältnis zu 800px)
-    // Wenn Breite 1600 ist, ist Faktor 2.0. Alles ist doppelt so groß.
-    scaleFactor = (float)winWidth / 800.0f;
 }
 
 void Game::loadSettings() {
@@ -56,13 +50,14 @@ void Game::saveSettings() {
 void Game::changeResolution(int w, int h) {
     winWidth = w;
     winHeight = h;
-    updateScaleFactor(); // WICHTIG: Scale neu berechnen
-
     SDL_SetWindowSize(window, w, h);
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
+    // Skalierung neu berechnen
+    // Wir nehmen die Breite als Basis für die Skalierung (Verhältnis zu 800px)
+    float scaleFactor = (float)winWidth / 800.0f;
+
     delete paddle;
-    // Paddle Position und Scale übergeben
     paddle = new Paddle((float)winWidth / 2.0f - (50.0f * scaleFactor), (float)winHeight - (50.0f * scaleFactor), scaleFactor);
 
     loadLevel(currentLevelIndex);
@@ -79,7 +74,9 @@ bool Game::init(const char* title) {
 
     srand((unsigned int)time(0));
     loadTextures();
-    updateScaleFactor();
+
+    // Initiale Skalierung
+    float scaleFactor = (float)winWidth / 800.0f;
 
     paddle = new Paddle((float)winWidth / 2.0f - (50.0f * scaleFactor), (float)winHeight - (50.0f * scaleFactor), scaleFactor);
 
@@ -118,11 +115,11 @@ void Game::loadTextures() {
 }
 
 void Game::resetBall() {
+    float scaleFactor = (float)winWidth / 800.0f;
     balls.clear();
-    paddle->setWidth(100.0f); // Setzt Breite zurück (Base 100)
+    paddle->setWidth(100.0f);
     SDL_FRect pRect = paddle->getRect();
 
-    // Ball zentrieren und auch Scale übergeben
     float ballSize = 16.0f * scaleFactor;
     Ball b(pRect.x + pRect.w / 2.0f - ballSize / 2.0f, pRect.y - ballSize - 2.0f, 0.0f, 0.0f, scaleFactor);
     balls.push_back(b);
@@ -130,6 +127,7 @@ void Game::resetBall() {
 }
 
 void Game::createBrick(float x, float y, int type) {
+    float scaleFactor = (float)winWidth / 800.0f;
     int health = (type == 1) ? 1 : (type == 2 ? 2 : 3);
     float r, g, b;
     if (type == 1) { r = 0.8f; g = 0.5f; b = 0.2f; }
@@ -137,29 +135,23 @@ void Game::createBrick(float x, float y, int type) {
     else if (type == 3) { r = 0.9f; g = 0.8f; b = 0.1f; }
     else { r = 0.2f; g = 0.8f; b = 0.2f; }
 
-    // x und y sind hier schon skaliert übergeben worden, aber Brick Constructor braucht scale für Größe
     bricks.push_back(Brick(x, y, health, type, { r, g, b, 1.0f }, scaleFactor));
 }
 
 void Game::loadLevel(int levelIndex) {
+    float scaleFactor = (float)winWidth / 800.0f;
     bricks.clear(); powerups.clear(); pointItems.clear(); particles.clear();
 
-    // Alles mit scaleFactor multiplizieren
+    float levelDesignWidth = 800.0f;
+    float offsetX = (float)(winWidth - (levelDesignWidth * scaleFactor)) / 2.0f;
     float bW = 60.0f * scaleFactor;
     float spacingX = 70.0f * scaleFactor;
     float spacingY = 40.0f * scaleFactor;
-
-    // Design-Breite war 800. Jetzt ist sie winWidth. 
-    // Wir zentrieren den "800 * scale" Block im Fenster.
-    // Da winWidth exakt 800*scale ist (wegen unserer Formel), ist offsetX eigentlich 0.
-    // Aber für die Zukunft/Sicherheit lassen wir die Formel:
-    float levelContentWidth = 800.0f * scaleFactor;
-    float offsetX = (winWidth - levelContentWidth) / 2.0f;
     float startY = 50.0f * scaleFactor;
 
     if (levelIndex == 1) {
         for (int row = 0; row < 8; row++) {
-            float rowOffset = (8 - row) * (bW / 2.0f);
+            float rowOffset = (float)(8 - row) * (bW / 2.0f);
             for (int col = 0; col <= row; col++)
                 createBrick(offsetX + (150.0f * scaleFactor) + rowOffset + (float)col * spacingX, startY + (float)row * spacingY, (row % 2) + 1);
         }
@@ -199,10 +191,10 @@ void Game::nextLevel() {
 }
 
 void Game::trySpawnItem(float x, float y) {
+    float scaleFactor = (float)winWidth / 800.0f;
     if ((powerups.size() + pointItems.size()) >= 4) return;
     int roll = rand() % 100;
 
-    // Größe und Speed skalieren
     float size = 20.0f * scaleFactor;
 
     if (roll < 20) {
@@ -222,9 +214,9 @@ void Game::trySpawnItem(float x, float y) {
 }
 
 void Game::spawnParticles(float x, float y, Color c) {
+    float scaleFactor = (float)winWidth / 800.0f;
     for (int i = 0; i < 6; i++) {
         Particle p; p.x = x; p.y = y;
-        // Speed skalieren
         p.velX = (float)(rand() % 200 - 100) * scaleFactor;
         p.velY = (float)(rand() % 200 - 100) * scaleFactor;
         p.life = 1.0f; p.color = c;
@@ -233,6 +225,7 @@ void Game::spawnParticles(float x, float y, Color c) {
 }
 
 void Game::processEvents() {
+    float scaleFactor = (float)winWidth / 800.0f;
     SDL_Event event;
     mousePressed = false;
     while (SDL_PollEvent(&event)) {
@@ -246,10 +239,18 @@ void Game::processEvents() {
             if (event.button.button == SDL_BUTTON_LEFT) mousePressed = true;
         }
         if (event.type == SDL_EVENT_KEY_DOWN) {
+
+            // NEU: ESC TASTE ruft Menü auf
+            if (event.key.key == SDLK_ESCAPE) {
+                // Von überall ins Menü, außer man ist schon dort
+                if (gameState != STATE_MENU) {
+                    gameState = STATE_MENU;
+                }
+            }
+
             if (gameState == STATE_PLAYING) {
                 if (ballStuckToPaddle && event.key.key == SDLK_SPACE) {
                     ballStuckToPaddle = false;
-                    // Speed skalieren (360 * scale)
                     if (!balls.empty()) balls[0].setVelocity(0.0f, -360.0f * scaleFactor);
                 }
             }
@@ -264,6 +265,7 @@ void Game::processEvents() {
     }
 }
 
+// Pixel Font Renderer Implementation
 void Game::drawChar(char c, float x, float y, float s, Color color) {
     static const int fontMap[][15] = {
         {0,1,0,1,0,1,1,1,1,1,0,1,1,0,1}, {1,1,0,1,0,1,1,1,0,1,0,1,1,1,0}, {0,1,1,1,0,0,1,0,0,1,0,0,0,1,1},
@@ -308,6 +310,7 @@ void Game::drawText(const char* text, float x, float y, float scale, Color c) {
 }
 
 bool Game::drawButton(float x, float y, float w, float h, const char* text) {
+    float scaleFactor = (float)winWidth / 800.0f;
     bool hovered = (mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h);
     Color bg = hovered ? Color{ 0.3f, 0.7f, 0.3f, 1 } : Color{ 0.2f, 0.2f, 0.2f, 1 };
     SDL_SetRenderDrawColorFloat(renderer, bg.r, bg.g, bg.b, bg.a);
@@ -317,7 +320,6 @@ bool Game::drawButton(float x, float y, float w, float h, const char* text) {
     SDL_RenderRect(renderer, &rect);
 
     float textLen = 0; const char* t = text; while (*t++) textLen++;
-    // Text Skalierung an scaleFactor anpassen
     float tScale = 4.0f * scaleFactor;
     float tWidth = textLen * (4.0f * tScale);
     drawText(text, x + (w - tWidth) / 2.0f, y + h / 2.0f - (2.5f * tScale), tScale, { 1,1,1,1 });
@@ -325,6 +327,7 @@ bool Game::drawButton(float x, float y, float w, float h, const char* text) {
 }
 
 void Game::update(float dt) {
+    float scaleFactor = (float)winWidth / 800.0f;
     if (gameState == STATE_PLAYING) {
         paddle->update(dt, winWidth);
 
@@ -348,11 +351,11 @@ void Game::update(float dt) {
 
         for (auto& p : powerups) {
             if (!p.active) continue;
-            p.rect.y += 150.0f * scaleFactor * dt; // Auch Fallgeschwindigkeit skalieren
+            p.rect.y += 150.0f * scaleFactor * dt;
             SDL_FRect pRect = paddle->getRect();
             if (SDL_HasRectIntersectionFloat(&p.rect, &pRect)) {
                 p.active = false;
-                if (p.type == PU_WIDE) paddle->setWidth(150.0f); // setWidth nutzt intern scale
+                if (p.type == PU_WIDE) paddle->setWidth(150.0f);
                 if (p.type == PU_FIRE) for (auto& b : balls) b.setFireball(true);
                 if (p.type == PU_MULTI) {
                     ballStuckToPaddle = false;
@@ -415,7 +418,7 @@ void Game::update(float dt) {
 
         for (auto& p : particles) {
             p.x += p.velX * dt; p.y += p.velY * dt;
-            p.velY += 300.0f * scaleFactor * dt; // Gravity skalieren
+            p.velY += 300.0f * scaleFactor * dt;
             p.life -= 2.0f * dt;
         }
         if (shakeTime > 0) shakeTime -= dt;
@@ -423,6 +426,7 @@ void Game::update(float dt) {
 }
 
 void Game::renderMenu() {
+    float scaleFactor = (float)winWidth / 800.0f;
     float cx = (float)winWidth / 2.0f;
     float cy = (float)winHeight / 2.0f;
     float btnW = 200.0f * scaleFactor;
@@ -430,7 +434,11 @@ void Game::renderMenu() {
 
     drawText("NEOBALL", cx - 120.0f * scaleFactor, 100.0f * scaleFactor, 8.0f * scaleFactor, { 0,1,1,1 });
 
-    if (drawButton(cx - btnW / 2.0f, cy - 60.0f * scaleFactor, btnW, btnH, "PLAY")) {
+    // TEXT ANPASSUNG: Spiel fortsetzen oder neu Starten
+    // Wenn Score > 0 oder Level > 1 sind wir wahrscheinlich im Spiel
+    const char* playText = (score > 0 || currentLevelIndex > 1) ? "RESUME" : "PLAY";
+
+    if (drawButton(cx - btnW / 2.0f, cy - 60.0f * scaleFactor, btnW, btnH, playText)) {
         gameState = STATE_PLAYING;
     }
     if (drawButton(cx - btnW / 2.0f, cy + 10.0f * scaleFactor, btnW, btnH, "SETTINGS")) {
@@ -442,11 +450,14 @@ void Game::renderMenu() {
 }
 
 void Game::renderSettings() {
+    float scaleFactor = (float)winWidth / 800.0f;
     float cx = (float)winWidth / 2.0f;
     float btnW = 300.0f * scaleFactor;
     float btnH = 40.0f * scaleFactor;
-    float startY = 150.0f * scaleFactor;
-    float gap = 60.0f * scaleFactor;
+
+    // FIX: Start und Gap angepasst für 16:9 Aspect Ratios
+    float startY = 120.0f * scaleFactor;
+    float gap = 55.0f * scaleFactor;
 
     drawText("RESOLUTION", cx - 120.0f * scaleFactor, 50.0f * scaleFactor, 6.0f * scaleFactor, { 1,1,1,1 });
 
@@ -456,12 +467,15 @@ void Game::renderSettings() {
     if (drawButton(cx - btnW / 2.0f, startY + gap * 3, btnW, btnH, "1920 X 1080")) changeResolution(1920, 1080);
     if (drawButton(cx - btnW / 2.0f, startY + gap * 4, btnW, btnH, "2560 X 1440")) changeResolution(2560, 1440);
 
-    if (drawButton(cx - (200.0f * scaleFactor) / 2.0f, (float)winHeight - 80.0f * scaleFactor, 200.0f * scaleFactor, 50.0f * scaleFactor, "BACK")) {
+    // Der Zurück Button wird nun basierend auf dem Ende der Liste platziert
+    float listEnd = startY + (gap * 5);
+    if (drawButton(cx - (200.0f * scaleFactor) / 2.0f, listEnd + 20.0f * scaleFactor, 200.0f * scaleFactor, 50.0f * scaleFactor, "BACK")) {
         gameState = STATE_MENU;
     }
 }
 
 void Game::renderLevelComplete() {
+    float scaleFactor = (float)winWidth / 800.0f;
     float cx = (float)winWidth / 2.0f;
     float cy = (float)winHeight / 2.0f;
     float btnW = 200.0f * scaleFactor;
@@ -478,6 +492,7 @@ void Game::renderLevelComplete() {
 }
 
 void Game::renderGameOver() {
+    float scaleFactor = (float)winWidth / 800.0f;
     SDL_SetRenderDrawColorFloat(renderer, 0.2f, 0, 0, 1);
     SDL_RenderClear(renderer);
 
@@ -488,6 +503,7 @@ void Game::renderGameOver() {
 }
 
 void Game::render() {
+    float scaleFactor = (float)winWidth / 800.0f;
     SDL_SetRenderDrawColorFloat(renderer, 0.1f, 0.1f, 0.15f, 1.0f);
     SDL_RenderClear(renderer);
 

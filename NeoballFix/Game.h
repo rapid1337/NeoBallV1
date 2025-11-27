@@ -37,8 +37,7 @@ private:
     // Management
     void loadSettings();
     void saveSettings();
-    void changeResolution(int w, int h);
-    void updateScaleFactor(); // NEU: Berechnet Skalierung neu
+    void changeResolution(int w, int h);  
 
     // Rendering States
     void renderMenu();
