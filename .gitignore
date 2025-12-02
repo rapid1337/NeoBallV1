@@ -53,3 +53,8 @@ x64/Debug/NeoballFix.pdb
 .vs/NeoballFix/v17/ipch/AutoPCH/8c20264228568de1/GAME.ipch
 .vs/NeoballFix/FileContentIndex/223100cd-1884-46db-922f-f889a2d79182.vsidx
 .vs/NeoballFix/FileContentIndex/f3393780-3459-4dcd-a3cc-95038047e876.vsidx
+.vs/NeoballFix/FileContentIndex/99c5cd58-4c1d-4d36-8f0f-9ea22fc730ed.vsidx
+.vs/NeoballFix/v17/ipch/AutoPCH/317e0de2bb1cabe2/BRICK.ipch
+.vs/NeoballFix/v17/ipch/AutoPCH/b07c2d4e35ece782/BALL.ipch
+NeoballFix/Game.h
+x64/Debug/SDL3.dll
