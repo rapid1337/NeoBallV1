@@ -34,28 +34,37 @@ private:
     void update(float deltaTime);
     void render();
 
-    // Management
+    // --- Menü & Settings Funktionen ---
     void loadSettings();
     void saveSettings();
-    void changeResolution(int w, int h);  
+    void changeResolution(int w, int h);
+    void updateScaleFactor();
 
-    // Rendering States
+    // Render States
     void renderMenu();
     void renderSettings();
     void renderLevelComplete();
     void renderGameOver();
 
-    // UI Helpers
+    // GUI Helper (Bleiben 2D)
     bool drawButton(float x, float y, float w, float h, const char* text);
     void drawText(const char* text, float x, float y, float scale, Color c);
     void drawChar(char c, float x, float y, float scale, Color color);
     void drawNumber(int number, float x, float y, float scale);
 
-    // Resources
+    // --- 3D RENDERING HELPERS (NEU) ---
+    // Verwandelt 2D Logik-Koordinaten in 2.5D Bildschirm-Koordinaten
+    SDL_FPoint transform3D(float x, float y);
+    // Zeichnet eine Textur (oder Farbe) perspektivisch verzerrt
+    void renderTexture3D(SDL_Texture* tex, SDL_FRect rect, Color c = { 1,1,1,1 });
+    // Zeichnet den 3D-Boden-Grid
+    void render3DGrid();
+
+    // Resource Management
     void loadTextures();
     SDL_Texture* loadTexture(const char* file);
 
-    // Gameplay
+    // Gameplay Helpers
     void resetBall();
     void nextLevel();
     void loadLevel(int levelIndex);
@@ -71,7 +80,6 @@ private:
     int winWidth = 800;
     int winHeight = 600;
 
-    // NEU: Globaler Skalierungsfaktor
     float scaleFactor = 1.0f;
 
     SDL_Texture* texBg = nullptr;
@@ -83,6 +91,8 @@ private:
     SDL_Texture* texBrickGreen = nullptr;
     SDL_Texture* texItemPower = nullptr;
     SDL_Texture* texItemPoint = nullptr;
+    // Ein weißer Pixel für farbige Formen ohne Textur
+    SDL_Texture* texWhitePixel = nullptr;
 
     Paddle* paddle = nullptr;
 
@@ -93,8 +103,10 @@ private:
     std::vector<PointItem> pointItems;
 
     float shakeTime = 0.0f;
+
     int lives;
     bool ballStuckToPaddle;
+
     GameState gameState;
     int score;
     int currentLevelIndex;
