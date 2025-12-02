@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <iostream>
 
-Game::Game() : lives(3), ballStuckToPaddle(true), gameState(STATE_MENU), score(0), currentLevelIndex(1) {
-    loadSettings();
+Game::Game() : lives(3), ballStuckToPaddle(true), gameState(STATE_MENU), score(0), highScore(0), currentLevelIndex(1) {
+    loadSettings(); // Lädt Highscore beim Start
     updateScaleFactor();
 }
 
@@ -37,19 +37,29 @@ void Game::updateScaleFactor() {
 void Game::loadSettings() {
     std::ifstream file("settings.cfg");
     if (file.is_open()) {
-        file >> winWidth >> winHeight;
+        // Versuche Auflösung zu lesen
+        if (!(file >> winWidth >> winHeight)) {
+            winWidth = 800; winHeight = 600;
+        }
+        // Versuche Highscore zu lesen
+        if (!(file >> highScore)) {
+            highScore = 0;
+        }
         file.close();
     }
     else {
+        // Standardwerte falls keine Datei existiert
         winWidth = 800;
         winHeight = 600;
+        highScore = 0;
     }
 }
 
 void Game::saveSettings() {
     std::ofstream file("settings.cfg");
     if (file.is_open()) {
-        file << winWidth << " " << winHeight;
+        // Speichert Format: Breite Höhe Highscore
+        file << winWidth << " " << winHeight << " " << highScore;
         file.close();
     }
 }
@@ -65,7 +75,7 @@ void Game::changeResolution(int w, int h) {
     paddle = new Paddle((float)winWidth / 2.0f - (50.0f * scaleFactor), (float)winHeight - (50.0f * scaleFactor), scaleFactor);
     loadLevel(currentLevelIndex);
     resetBall();
-    saveSettings();
+    saveSettings(); // Speichert Auflösung (und aktuellen Highscore)
 }
 
 bool Game::init(const char* title) {
@@ -74,7 +84,6 @@ bool Game::init(const char* title) {
     window = SDL_CreateWindow(title, winWidth, winHeight, 0);
     renderer = SDL_CreateRenderer(window, NULL);
 
-    // Erstelle einen 1x1 weißen Pixel für Geometrie-Fallback
     SDL_Surface* surf = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_RGBA8888);
     SDL_FillSurfaceRect(surf, NULL, SDL_MapRGB(SDL_GetPixelFormatDetails(surf->format), NULL, 255, 255, 255));
     texWhitePixel = SDL_CreateTextureFromSurface(renderer, surf);
@@ -98,7 +107,6 @@ SDL_Texture* Game::loadTexture(const char* file) {
     snprintf(path, sizeof(path), "graphics/%s", file);
     SDL_Surface* surf = SDL_LoadBMP(path);
     if (!surf) return nullptr;
-    // Set Blend Mode für Transparenz bei Texturen
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surf);
     SDL_DestroySurface(surf);
     return tex;
@@ -252,93 +260,48 @@ void Game::processEvents() {
     }
 }
 
-// ---------------------------------------------------------
-// 2.5D MATH & RENDERING IMPLEMENTATION
-// ---------------------------------------------------------
-
-// Diese Funktion ist das Herzstück des 2.5D Effekts
 SDL_FPoint Game::transform3D(float x, float y) {
     float centerX = (float)winWidth / 2.0f;
-
-    // Normalisiere Y von 0 (oben) bis 1 (unten)
     float normalizedY = y / (float)winHeight;
-
-    // Perspektiven-Faktor: 
-    // Oben (0.0) ist das Spielfeld schmaler (z.B. 65% Breite)
-    // Unten (1.0) ist das Spielfeld normal (100% Breite)
     float perspectiveScale = 0.65f + (0.35f * normalizedY);
-
-    // X verschieben relativ zur Mitte basierend auf der Perspektive
     float relX = x - centerX;
     float screenX = centerX + (relX * perspectiveScale);
-
-    // Y bleibt linear für bessere Spielbarkeit, könnte aber auch gestaucht werden
     float screenY = y;
-
     return { screenX, screenY };
 }
 
 void Game::renderTexture3D(SDL_Texture* tex, SDL_FRect rect, Color c) {
-    // Wenn keine Textur da ist, nutze weißen Pixel
     if (!tex) tex = texWhitePixel;
-
-    // Berechne die 4 Eckpunkte des Rechtecks
     float x1 = rect.x;              float y1 = rect.y;
     float x2 = rect.x + rect.w;     float y2 = rect.y;
     float x3 = rect.x + rect.w;     float y3 = rect.y + rect.h;
     float x4 = rect.x;              float y4 = rect.y + rect.h;
 
-    // Transformiere alle 4 Punkte ins 2.5D
-    SDL_FPoint p1 = transform3D(x1, y1); // Oben Links
-    SDL_FPoint p2 = transform3D(x2, y2); // Oben Rechts
-    SDL_FPoint p3 = transform3D(x3, y3); // Unten Rechts
-    SDL_FPoint p4 = transform3D(x4, y4); // Unten Links
+    SDL_FPoint p1 = transform3D(x1, y1);
+    SDL_FPoint p2 = transform3D(x2, y2);
+    SDL_FPoint p3 = transform3D(x3, y3);
+    SDL_FPoint p4 = transform3D(x4, y4);
 
-    // Erstelle Vertices für SDL_RenderGeometry
-    // Wir brauchen 2 Dreiecke um ein Viereck zu zeichnen (0-1-2 und 0-2-3)
     SDL_Vertex vertices[4];
-
-    // Farbe konvertieren
     SDL_FColor col = { c.r, c.g, c.b, c.a };
 
-    // Vertex 0 (Top Left)
-    vertices[0].position = p1;
-    vertices[0].color = col;
-    vertices[0].tex_coord = { 0.0f, 0.0f };
-
-    // Vertex 1 (Top Right)
-    vertices[1].position = p2;
-    vertices[1].color = col;
-    vertices[1].tex_coord = { 1.0f, 0.0f };
-
-    // Vertex 2 (Bottom Right)
-    vertices[2].position = p3;
-    vertices[2].color = col;
-    vertices[2].tex_coord = { 1.0f, 1.0f };
-
-    // Vertex 3 (Bottom Left)
-    vertices[3].position = p4;
-    vertices[3].color = col;
-    vertices[3].tex_coord = { 0.0f, 1.0f };
+    vertices[0].position = p1; vertices[0].color = col; vertices[0].tex_coord = { 0.0f, 0.0f };
+    vertices[1].position = p2; vertices[1].color = col; vertices[1].tex_coord = { 1.0f, 0.0f };
+    vertices[2].position = p3; vertices[2].color = col; vertices[2].tex_coord = { 1.0f, 1.0f };
+    vertices[3].position = p4; vertices[3].color = col; vertices[3].tex_coord = { 0.0f, 1.0f };
 
     int indices[] = { 0, 1, 2, 0, 2, 3 };
-
     SDL_RenderGeometry(renderer, tex, vertices, 4, indices, 6);
 }
 
 void Game::render3DGrid() {
-    // Zeichnet ein Gitter am "Boden", um den 3D Effekt zu verstärken
     SDL_SetRenderDrawColorFloat(renderer, 0.2f, 0.2f, 0.3f, 0.3f);
-
-    // Vertikale Linien (strahlenförmig)
     for (int i = 0; i <= 10; i++) {
         float x = ((float)winWidth / 10.0f) * i;
         SDL_FPoint start = transform3D(x, 0);
         SDL_FPoint end = transform3D(x, (float)winHeight);
         SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
     }
-
-    // Horizontale Linien (werden nach hinten enger, wenn wir Y stauchen würden, hier linear)
     for (int i = 0; i <= 10; i++) {
         float y = ((float)winHeight / 10.0f) * i;
         SDL_FPoint start = transform3D(0, y);
@@ -346,8 +309,6 @@ void Game::render3DGrid() {
         SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
     }
 }
-
-// ---------------------------------------------------------
 
 void Game::drawChar(char c, float x, float y, float s, Color color) {
     static const int fontMap[][15] = {
@@ -369,7 +330,7 @@ void Game::drawChar(char c, float x, float y, float s, Color color) {
             if (fontMap[index][i]) {
                 int col = i % 3; int row = i / 3;
                 SDL_FRect r = { x + (float)col * s, y + (float)row * s, s, s };
-                SDL_RenderFillRect(renderer, &r); // UI bleibt 2D
+                SDL_RenderFillRect(renderer, &r);
             }
         }
     }
@@ -382,13 +343,18 @@ void Game::drawText(const char* text, float x, float y, float scale, Color c) {
         if (ch >= 'a' && ch <= 'z') ch -= 32;
         if (ch >= 'A' && ch <= 'Z') drawChar(ch, cursorX, y, scale, c);
         else if (ch >= '0' && ch <= '9') drawNumber(ch - '0', cursorX, y, scale / 10.0f * 1.5f);
+        else if (ch == ':') {
+            SDL_SetRenderDrawColorFloat(renderer, c.r, c.g, c.b, c.a);
+            SDL_FRect r1 = { cursorX + scale, y + scale, scale, scale };
+            SDL_FRect r2 = { cursorX + scale, y + 3 * scale, scale, scale };
+            SDL_RenderFillRect(renderer, &r1); SDL_RenderFillRect(renderer, &r2);
+        }
         cursorX += (3.0f * scale) + (1.0f * scale);
         text++;
     }
 }
 
 bool Game::drawButton(float x, float y, float w, float h, const char* text) {
-    float scaleFactor = (float)winWidth / 800.0f;
     bool hovered = (mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h);
     Color bg = hovered ? Color{ 0.3f, 0.7f, 0.3f, 1 } : Color{ 0.2f, 0.2f, 0.2f, 1 };
     SDL_SetRenderDrawColorFloat(renderer, bg.r, bg.g, bg.b, bg.a);
@@ -421,7 +387,10 @@ void Game::update(float dt) {
             float cx = std::max(pRect.x, std::min(pi.x, pRect.x + pRect.w));
             float cy = std::max(pRect.y, std::min(pi.y, pRect.y + pRect.h));
             if (((pi.x - cx) * (pi.x - cx) + (pi.y - cy) * (pi.y - cy)) < (pi.radius * pi.radius)) {
-                pi.active = false; score += pi.value;
+                pi.active = false;
+                score += pi.value;
+                // SOFORT SPEICHERN WENN HIGHSCORE
+                if (score > highScore) { highScore = score; saveSettings(); }
             }
             if (pi.y > (float)winHeight) pi.active = false;
         }
@@ -477,6 +446,9 @@ void Game::update(float dt) {
                     if (!brick.isActive()) {
                         shakeTime = 0.1f;
                         score += 10;
+                        // SOFORT SPEICHERN WENN HIGHSCORE
+                        if (score > highScore) { highScore = score; saveSettings(); }
+
                         spawnParticles(brRect.x + brRect.w / 2.0f, brRect.y + brRect.h / 2.0f, brick.getColor());
                         trySpawnItem(brRect.x + brRect.w / 2.0f, brRect.y);
                         activeBricksCount--;
@@ -490,7 +462,9 @@ void Game::update(float dt) {
 
         if (!anyBallActive && !ballStuckToPaddle) {
             lives--;
-            if (lives > 0) resetBall(); else gameState = STATE_GAME_OVER;
+            if (lives > 0) resetBall(); else {
+                gameState = STATE_GAME_OVER;
+            }
         }
 
         for (auto& p : particles) {
@@ -503,13 +477,13 @@ void Game::update(float dt) {
 }
 
 void Game::renderMenu() {
-    float scaleFactor = (float)winWidth / 800.0f;
-    float cx = (float)winWidth / 2.0f;
-    float cy = (float)winHeight / 2.0f;
-    float btnW = 200.0f * scaleFactor;
-    float btnH = 50.0f * scaleFactor;
+    float cx = (float)winWidth / 2.0f; float cy = (float)winHeight / 2.0f;
+    float btnW = 200.0f * scaleFactor; float btnH = 50.0f * scaleFactor;
 
     drawText("NEOBALL", cx - 120.0f * scaleFactor, 100.0f * scaleFactor, 8.0f * scaleFactor, { 0,1,1,1 });
+    drawText("HIGHSCORE:", cx - 100.0f * scaleFactor, 180.0f * scaleFactor, 4.0f * scaleFactor, { 1,1,0,1 });
+    drawNumber(highScore, cx + 60.0f * scaleFactor, 180.0f * scaleFactor, 4.0f / 10.0f * 1.5f * scaleFactor);
+
     const char* playText = (score > 0 || currentLevelIndex > 1) ? "RESUME" : "PLAY";
     if (drawButton(cx - btnW / 2.0f, cy - 60.0f * scaleFactor, btnW, btnH, playText)) gameState = STATE_PLAYING;
     if (drawButton(cx - btnW / 2.0f, cy + 10.0f * scaleFactor, btnW, btnH, "SETTINGS")) gameState = STATE_SETTINGS;
@@ -517,10 +491,8 @@ void Game::renderMenu() {
 }
 
 void Game::renderSettings() {
-    float scaleFactor = (float)winWidth / 800.0f;
     float cx = (float)winWidth / 2.0f;
-    float btnW = 300.0f * scaleFactor;
-    float btnH = 40.0f * scaleFactor;
+    float btnW = 300.0f * scaleFactor; float btnH = 40.0f * scaleFactor;
     float startY = 120.0f * scaleFactor; float gap = 55.0f * scaleFactor;
 
     drawText("RESOLUTION", cx - 120.0f * scaleFactor, 50.0f * scaleFactor, 6.0f * scaleFactor, { 1,1,1,1 });
@@ -534,7 +506,6 @@ void Game::renderSettings() {
 }
 
 void Game::renderLevelComplete() {
-    float scaleFactor = (float)winWidth / 800.0f;
     float cx = (float)winWidth / 2.0f; float cy = (float)winHeight / 2.0f;
     float btnW = 200.0f * scaleFactor; float btnH = 50.0f * scaleFactor;
     drawText("LEVEL COMPLETE", cx - 200.0f * scaleFactor, cy - 100.0f * scaleFactor, 6.0f * scaleFactor, { 0,1,0,1 });
@@ -543,12 +514,18 @@ void Game::renderLevelComplete() {
 }
 
 void Game::renderGameOver() {
-    float scaleFactor = (float)winWidth / 800.0f;
     SDL_SetRenderDrawColorFloat(renderer, 0.2f, 0, 0, 1);
     SDL_RenderClear(renderer);
     float cx = (float)winWidth / 2.0f; float cy = (float)winHeight / 2.0f;
     drawText("GAME OVER", cx - 140.0f * scaleFactor, cy - 100.0f * scaleFactor, 8.0f * scaleFactor, { 1,0,0,1 });
-    drawText("PRESS SPACE TO RESTART", cx - 220.0f * scaleFactor, cy + 50.0f * scaleFactor, 4.0f * scaleFactor, { 1,1,1,1 });
+    if (score >= highScore && score > 0) {
+        drawText("NEW HIGHSCORE!", cx - 200.0f * scaleFactor, cy, 5.0f * scaleFactor, { 1,1,0,1 });
+    }
+    else {
+        drawText("SCORE:", cx - 80.0f * scaleFactor, cy, 5.0f * scaleFactor, { 1,1,1,1 });
+        drawNumber(score, cx + 80.0f * scaleFactor, cy, 5.0f / 10.0f * 1.5f * scaleFactor);
+    }
+    drawText("PRESS SPACE TO RESTART", cx - 220.0f * scaleFactor, cy + 80.0f * scaleFactor, 4.0f * scaleFactor, { 1,1,1,1 });
 }
 
 void Game::render() {
@@ -568,12 +545,8 @@ void Game::render() {
         renderGameOver();
     }
     else {
-        // --- 2.5D GAME RENDERING ---
-
-        // Hintergrund
         if (texBg) { SDL_RenderTexture(renderer, texBg, NULL, NULL); }
 
-        // Grid (Neu)
         render3DGrid();
 
         float sX = (shakeTime > 0) ? (float)(rand() % 6 - 3) * scaleFactor : 0.0f;
@@ -581,28 +554,23 @@ void Game::render() {
 
         auto ApplyShake = [&](SDL_FRect r) { r.x += sX; r.y += sY; return r; };
 
-        // Bricks 3D
         for (const auto& b : bricks) {
             if (b.isActive()) {
                 SDL_FRect br = ApplyShake(b.getRect());
                 br.x += b.getZOffset() * 0.5f;
                 br.y += b.getZOffset() * 0.5f;
-
                 SDL_Texture* t = nullptr;
                 if (b.getType() == 1) t = texBrickWood;
                 else if (b.getType() == 2) t = texBrickStone;
                 else if (b.getType() == 3) t = texBrickGold;
                 else t = texBrickGreen;
-
                 renderTexture3D(t, br, b.getColor());
             }
         }
 
-        // Paddle 3D
         SDL_FRect pr = ApplyShake(paddle->getRect());
         renderTexture3D(texPaddle, pr, { 0.6f, 0.6f, 0.8f, 1.0f });
 
-        // Items 3D
         for (const auto& pi : pointItems) {
             if (pi.active) {
                 SDL_FRect ir = { pi.x - pi.radius, pi.y - pi.radius, pi.radius * 2.0f, pi.radius * 2.0f };
@@ -610,7 +578,6 @@ void Game::render() {
             }
         }
 
-        // Powerups 3D
         for (const auto& p : powerups) {
             if (p.active) {
                 Color c = { 0,1,0,1 }; if (p.type == PU_FIRE) c = { 1,0,0,1 }; if (p.type == PU_WIDE) c = { 0,0,1,1 };
@@ -618,19 +585,14 @@ void Game::render() {
             }
         }
 
-        // Balls 3D
         for (const auto& b : balls) {
             if (!b.isActive()) continue;
             SDL_FRect br = b.getRect();
-
-            // Bei Ball Mod Color für Textur setzen falls genutzt, oder Farbe übergeben
             Color c = { 1,1,1,1 };
             if (b.isFire()) c = { 1, 0.2f, 0, 1 };
-
             renderTexture3D(texBall, br, c);
         }
 
-        // Particles 3D
         for (const auto& p : particles) {
             if (p.life > 0) {
                 SDL_FRect pr = { p.x, p.y, 4.0f * scaleFactor, 4.0f * scaleFactor };
@@ -638,9 +600,6 @@ void Game::render() {
             }
         }
 
-        // --- UI OVERLAY (Bleibt 2D) ---
-
-        // Lives
         for (int i = 0; i < lives; i++) {
             SDL_FRect heart = { 10.0f * scaleFactor + (float)i * 25.0f * scaleFactor, (float)winHeight - 30.0f * scaleFactor, 20.0f * scaleFactor, 20.0f * scaleFactor };
             if (texBall) SDL_RenderTexture(renderer, texBall, NULL, &heart);
@@ -649,9 +608,16 @@ void Game::render() {
                 SDL_RenderFillRect(renderer, &heart);
             }
         }
-        // Score & Level
+        // Score (Oben Rechts)
         drawNumber(score, (float)winWidth - 150.0f * scaleFactor, 20.0f * scaleFactor, 1.5f * scaleFactor);
-        drawNumber(currentLevelIndex, 20.0f * scaleFactor, 20.0f * scaleFactor, 1.0f * scaleFactor);
+
+        // Level (Oben Links)
+        drawText("LVL:", 20.0f * scaleFactor, 20.0f * scaleFactor, 1.5f * scaleFactor, { 1,1,1,1 });
+        drawNumber(currentLevelIndex, 80.0f * scaleFactor, 20.0f * scaleFactor, 1.5f * scaleFactor);
+
+        // Highscore (Unter dem Level - NEU)
+        drawText("HI:", 20.0f * scaleFactor, 50.0f * scaleFactor, 1.0f * scaleFactor, { 1,1,0,1 });
+        drawNumber(highScore, 60.0f * scaleFactor, 50.0f * scaleFactor, 1.0f * scaleFactor);
     }
 
     SDL_RenderPresent(renderer);

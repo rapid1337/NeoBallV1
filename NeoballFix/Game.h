@@ -46,18 +46,15 @@ private:
     void renderLevelComplete();
     void renderGameOver();
 
-    // GUI Helper (Bleiben 2D)
+    // GUI Helper
     bool drawButton(float x, float y, float w, float h, const char* text);
     void drawText(const char* text, float x, float y, float scale, Color c);
     void drawChar(char c, float x, float y, float scale, Color color);
     void drawNumber(int number, float x, float y, float scale);
 
-    // --- 3D RENDERING HELPERS (NEU) ---
-    // Verwandelt 2D Logik-Koordinaten in 2.5D Bildschirm-Koordinaten
+    // --- 3D RENDERING HELPERS ---
     SDL_FPoint transform3D(float x, float y);
-    // Zeichnet eine Textur (oder Farbe) perspektivisch verzerrt
     void renderTexture3D(SDL_Texture* tex, SDL_FRect rect, Color c = { 1,1,1,1 });
-    // Zeichnet den 3D-Boden-Grid
     void render3DGrid();
 
     // Resource Management
@@ -91,7 +88,6 @@ private:
     SDL_Texture* texBrickGreen = nullptr;
     SDL_Texture* texItemPower = nullptr;
     SDL_Texture* texItemPoint = nullptr;
-    // Ein weißer Pixel für farbige Formen ohne Textur
     SDL_Texture* texWhitePixel = nullptr;
 
     Paddle* paddle = nullptr;
@@ -109,6 +105,7 @@ private:
 
     GameState gameState;
     int score;
+    int highScore; // NEU: Highscore Variable
     int currentLevelIndex;
 
     float mouseX = 0;
